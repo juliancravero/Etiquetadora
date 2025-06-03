@@ -58,7 +58,7 @@ def obtener_fecha_actual():
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 def imprimir_etiqueta(nombre_archivo):
-    ruta_original = f"/home/gst3d/etiquetas/{nombre_archivo}.prn"
+    ruta_original = f"/Users/usuario/GST3D Dropbox/gstipso gst/Mi PC (etiquetas-zebra)/Desktop/ETIQUETAS GST 2025/PLA+ SILK/{nombre_archivo}.prn"
     ruta_temp     = f"/tmp/{nombre_archivo}_con_fecha.prn"
     fecha = obtener_fecha_actual()
 
@@ -133,10 +133,10 @@ def actualizar_botones(tipo):
                         bg=color_hex, fg=fg,
                         width=15, height=4,
                         wraplength=100,
-                        command=lambda e=etiqueta, t=tipo, c=color_hex: imprimir_y_guardar_etiqueta(
+                        command=lambda e=etiqueta, t=tipo: imprimir_y_guardar_etiqueta(
                             e,
                             t,
-                            c,
+                            e,
                             "FIL1234"
                         )
                     )
