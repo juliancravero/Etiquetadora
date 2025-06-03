@@ -2,6 +2,13 @@
 import tkinter as tk
 import os
 from datetime import datetime
+from supabase import create_client, Client
+
+url = "https://xrsgaczmlkoprohaovjz.supabase.co"
+key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyc2dhY3ptbGtvcHJvaGFvdmp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NjA1NTgsImV4cCI6MjA2NDUzNjU1OH0.VDJxCEn-qHW4ac1W6nkNkEaCSpeFM-CgFVS4NfTa0lE"
+
+supabase: Client = create_client(url, key)
+
 
 def es_color_oscuro(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -122,17 +129,63 @@ def actualizar_botones(tipo):
         etiqueta_mostrar = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", etiqueta_mostrar)
 
         btn = tk.Button(frame_botones,
-                        text=etiqueta_mostrar,
+                        text=etiqueta,
                         bg=color_hex, fg=fg,
                         width=15, height=4,
                         wraplength=100,
-                        command=lambda e=etiqueta: imprimir_etiqueta(e))
+                        command=lambda e=etiqueta, t=tipo, c=color_hex: imprimir_y_guardar_etiqueta(
+                            e,
+                            t,
+                            c,
+                            "FIL1234"
+                        )
+                    )
+
         btn.grid(row=r, column=c, padx=5, pady=5, sticky="nsew")
 
     for i in range(cols):
         frame_botones.columnconfigure(i, weight=1)
 
+from datetime import datetime
 
+def subir_etiqueta_supabase(tipo, color, id_filamento, id_numero):
+    fecha = datetime.now().isoformat()
+    data = {
+        "fecha": fecha,
+        "tipo": tipo,
+        "color": color,
+        "id_filamento": id_filamento,
+        "id_numero": id_numero
+    }
+    response = supabase.table("etiquetas_filamento").insert(data).execute()
+    if response.status_code == 201:
+        print("Etiqueta subida con éxito a Supabase")
+    else:
+        print("Error al subir etiqueta:", response.data)
+ARCHIVO_CONTADOR = "contador_id_numero.txt"
+
+def leer_contador():
+    import os
+    if os.path.exists(ARCHIVO_CONTADOR):
+        with open(ARCHIVO_CONTADOR, "r") as f:
+            try:
+                return int(f.read())
+            except:
+                return 1
+    else:
+        return 1
+
+def guardar_contador(numero):
+    with open(ARCHIVO_CONTADOR, "w") as f:
+        f.write(str(numero))
+
+def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
+    id_numero = leer_contador()
+    imprimir_etiqueta(nombre_archivo)
+    subir_etiqueta_supabase(tipo, color, id_filamento, id_numero)
+    print(f"Etiqueta #{id_numero} guardada en Supabase")
+    id_numero += 1
+    guardar_contador(id_numero)
 
         
 # INTERFAZ TK 
