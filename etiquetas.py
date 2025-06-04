@@ -1,6 +1,9 @@
 # -- coding: utf-8 --
+import json
 import tkinter as tk
 import os
+import requests
+import time
 from datetime import datetime
 from supabase import create_client, Client
 
@@ -8,6 +11,7 @@ url = "https://xrsgaczmlkoprohaovjz.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyc2dhY3ptbGtvcHJvaGFvdmp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NjA1NTgsImV4cCI6MjA2NDUzNjU1OH0.VDJxCEn-qHW4ac1W6nkNkEaCSpeFM-CgFVS4NfTa0lE"
 
 supabase: Client = create_client(url, key)
+
 
 
 def es_color_oscuro(hex_color):
@@ -35,7 +39,7 @@ colores_por_tipo = {
         "SGREEN": "#228B22", "SPEACH": "#FFDAB9", "SPURPLE": "#800080", "SRED": "#FF0000",
         "SROSEGOLD": "#B76E79", "SSAND": "#C2B280", "SORANGEFLUOR" : "#FF8000", "SGREENFLUOR" : "#556B2F", "SYELLOWFLUOR" : "#FFFF00", "STRICOLORGREENPURPLEBLUE" : "#AEC6CF",
         "STRICOLORREDGOLDBLUE" : "#FFDB58", "STRICOLORGOLDPURPLEBLUE": "#FFD700",
-        "STRICOLORREDORANGEGOLD": "#FF6347", "SCOLORCHANGE": "#A68F6A", "STRICOLORGREENPURPLEGOLD": "#0000FF"
+        "STRICOLORREDORANGEGOLD": "#FF6347", "SCOLORCHANGE": "#A68F6A", "STRICOLORGREENPURPLEGOLD": "#0000FF", "SILKCOBRE": "#FF0000", "TRICOLORBLUEYELLOWFGREEN": "#4B4B4B", "TRICOLORGREENGOLDFUCHSIA": "AEC6CF" 
     },
     "PETG": {
         "PAPPLEGREEN": "#8DB600", "PBLACK": "#000000", "PCRYSTAL": "#CCE5FF", "PRED": "#FF0000",
@@ -58,7 +62,7 @@ def obtener_fecha_actual():
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 def imprimir_etiqueta(nombre_archivo):
-    ruta_original = f"/Users/usuario/GST3D Dropbox/gstipso gst/Mi PC (etiquetas-zebra)/Desktop/ETIQUETAS GST 2025/PLA+ SILK/{nombre_archivo}.prn"
+    ruta_original = f"/home/gst3d/etiquetas/{nombre_archivo}.prn"
     ruta_temp     = f"/tmp/{nombre_archivo}_con_fecha.prn"
     fecha = obtener_fecha_actual()
 
@@ -187,7 +191,56 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     id_numero += 1
     guardar_contador(id_numero)
 
-        
+# Conexion wifi chequeo y actualizacion de datos
+def hay_conexion():
+    try:
+        requests.get('https://www.google.com', timeout=3)
+        return True
+    except:
+        return False
+
+def guardar_local(datos):
+    try:
+        with open("datos_locales.json", "a") as f:
+            json.dump(datos, f)
+            f.write("\n")
+    except Exception as e:
+        print(f"Error al guardar localmente: {e}")
+
+def sincronizar_datos_locales():
+    if hay_conexion():
+        try:
+            # Leemos el archivo local
+            with open("datos_locales.json", "r") as f:
+                lineas = f.readlines()
+                for linea in lineas:
+                    datos = json.loads(linea)
+                    # Aquí subimos los datos a Supabase
+                    response = supabase.table('etiquetas_filamento').insert(datos).execute()
+                    if response.status_code == 201:
+                        print(f"Datos sincronizados con Supabase: {datos}")
+            
+            # Una vez que los datos se suben, borramos el archivo
+            os.remove("datos_locales.json")
+            print("Archivo local borrado después de la sincronización.")
+        except Exception as e:
+            print(f"Error al sincronizar: {e}")
+
+def manejar_conexion():
+    while True:
+        if hay_conexion():
+            print("Conexión restaurada, sincronizando...")
+            sincronizar_datos_locales()
+            break
+        else:
+            print("Sin conexión, guardando datos localmente...")
+
+            datos_a_guardar = {"tipo": "PLA", "color": "Rojo", "id_filamento": "FIL1234", "id_numero": 1}
+            guardar_local(datos_a_guardar)
+            time.sleep(60)
+
+manejar_conexion()
+       
 # INTERFAZ TK 
 root = tk.Tk()
 root.title("Impresion de etiquetas")
