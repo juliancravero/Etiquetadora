@@ -1,3 +1,4 @@
+#!/usr/bin/env  python3
 # -- coding: utf-8 --
 import json
 import tkinter as tk
@@ -200,14 +201,26 @@ def guardar_contador(numero):
 def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     id_numero = leer_contador()
 
-    imprimir_etiqueta(nombre_archivo)                 
-    imprimir_codigo_barras_simple(id_numero)          
+    imprimir_etiqueta(nombre_archivo)
+    imprimir_codigo_barras_simple(id_numero)
 
-    subir_etiqueta_supabase(tipo, color, id_filamento, id_numero)
-    print(f"Etiqueta #{id_numero} guardada en Supabase")
+    datos = {
+        "fecha": datetime.now().isoformat(),
+        "tipo": tipo,
+        "color": color,
+        "id_filamento": id_filamento,
+        "id_numero": id_numero
+    }
 
-    id_numero += 1
-    guardar_contador(id_numero)
+    guardar_local(datos)
+    guardar_contador(id_numero + 1)
+
+    print(f"Etiqueta #{id_numero} impresa y guardada localmente")
+
+    if hay_conexion():
+        threading.Thread(target=sincronizar_datos_locales, daemon=True).start()
+
+
 
 
 # Conexion wifi chequeo y actualizacion de datos
@@ -245,20 +258,6 @@ def sincronizar_datos_locales():
         except Exception as e:
             print(f"Error al sincronizar: {e}")
 
-def manejar_conexion():
-    while True:
-        if hay_conexion():
-            print("Conexión restaurada, sincronizando...")
-            sincronizar_datos_locales()
-            break
-        else:
-            print("Sin conexión, guardando datos localmente...")
-
-            datos_a_guardar = {"tipo": "PLA", "color": "Rojo", "id_filamento": "FIL1234", "id_numero": 1}
-            guardar_local(datos_a_guardar)
-            time.sleep(60)
-
-manejar_conexion()
        
 # INTERFAZ TK 
 root = tk.Tk()
@@ -271,6 +270,10 @@ root.configure(bg="#2e2e2e")
 
 tipo_var = tk.StringVar(value="PLA")
 tk.OptionMenu(root, tipo_var, *colores_por_tipo.keys(), command=actualizar_botones).pack(pady=10)
+btn_sync = tk.Button(root, text="🔁 Sincronizar ahora", font=("Arial", 14),
+                     bg="#444", fg="white", activebackground="#666",
+                     command=lambda: threading.Thread(target=sincronizar_datos_locales, daemon=True).start())
+btn_sync.pack(pady=5)
 
 canvas = tk.Canvas(root)
 from tkinter import ttk
@@ -291,4 +294,5 @@ canvas.pack(side="left",  fill="both", expand=True)
 sb.pack(       side="right", fill="y"      )
 
 actualizar_botones("PLA")
+import threading
 root.mainloop() 
