@@ -60,6 +60,20 @@ colores_por_tipo = {
 def obtener_fecha_actual():
     # dd/mm/YYYY
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    
+def imprimir_codigo_barras_simple(id_numero):
+    zpl = f"""
+^XA
+^FO50,50^BY3
+^BCN,100,Y,N,N
+^FD{id_numero}^FS
+^XZ
+"""
+    ruta_temp = f"/tmp/codigo_barras_{id_numero}.prn"
+    with open(ruta_temp, "w") as f:
+        f.write(zpl)
+    os.system(f"lp -d Zebra {ruta_temp}")
+
 
 def imprimir_etiqueta(nombre_archivo):
     ruta_original = f"/home/gst3d/etiquetas/{nombre_archivo}.prn"
@@ -185,11 +199,16 @@ def guardar_contador(numero):
 
 def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     id_numero = leer_contador()
-    imprimir_etiqueta(nombre_archivo)
+
+    imprimir_etiqueta(nombre_archivo)                 
+    imprimir_codigo_barras_simple(id_numero)          
+
     subir_etiqueta_supabase(tipo, color, id_filamento, id_numero)
     print(f"Etiqueta #{id_numero} guardada en Supabase")
+
     id_numero += 1
     guardar_contador(id_numero)
+
 
 # Conexion wifi chequeo y actualizacion de datos
 def hay_conexion():
