@@ -240,23 +240,61 @@ def guardar_local(datos):
         print(f"Error al guardar localmente: {e}")
 
 def sincronizar_datos_locales():
-    if hay_conexion():
-        try:
-            # Leemos el archivo local
-            with open("datos_locales.json", "r") as f:
-                lineas = f.readlines()
-                for linea in lineas:
+    print("🔁 Intentando sincronizar datos locales...")
+
+    if not os.path.exists("datos_locales.json"):
+        print("⚠️ Archivo 'datos_locales.json' no existe.")
+        return
+
+    if not hay_conexion():
+        print("❌ No hay conexión a internet.")
+        return
+
+    try:
+        with open("datos_locales.json", "r") as f:
+            lineas = f.readlines()
+            if not lineas:
+                print("⚠️ El archivo existe pero está vacío.")
+                return
+
+            exitos = 0
+            errores = 0
+
+            for idx, linea in enumerate(lineas):
+                print(f"📄 Línea {idx + 1} cruda: {linea.strip()}")
+
+                try:
                     datos = json.loads(linea)
-                    # Aquí subimos los datos a Supabase
+                    print(f"📦 Datos cargados: {datos}")
+                    
                     response = supabase.table('etiquetas_filamento').insert(datos).execute()
-                    if response.status_code == 201:
-                        print(f"Datos sincronizados con Supabase: {datos}")
-            
-            # Una vez que los datos se suben, borramos el archivo
+                    print("🧾 Respuesta de Supabase:", response)
+
+                    if hasattr(response, 'status_code') and response.status_code == 201:
+                        print(f"✅ Línea {idx + 1} subida correctamente.")
+                        exitos += 1
+                    else:
+                        print(f"❌ Línea {idx + 1} falló: {getattr(response, 'data', 'Sin detalles')}")
+                        errores += 1
+
+                except json.JSONDecodeError as e:
+                    print(f"💥 Error de JSON en línea {idx + 1}: {e}")
+                    errores += 1
+                except Exception as e:
+                    print(f"💣 Error inesperado al subir línea {idx + 1}: {e}")
+                    errores += 1
+
+        if errores == 0 and exitos > 0:
             os.remove("datos_locales.json")
-            print("Archivo local borrado después de la sincronización.")
-        except Exception as e:
-            print(f"Error al sincronizar: {e}")
+            print("🗑️ Todos los datos subidos. Archivo local eliminado.")
+        elif errores > 0:
+            print(f"⚠️ {errores} errores al sincronizar. Archivo no se borra.")
+        else:
+            print("🤔 No se subió ningún dato.")
+
+    except Exception as e:
+        print(f"💣 Error general durante la sincronización: {e}")
+
 
        
 # INTERFAZ TK 
