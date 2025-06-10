@@ -13,8 +13,6 @@ key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhy
 
 supabase: Client = create_client(url, key)
 
-
-
 def es_color_oscuro(hex_color):
     hex_color = hex_color.lstrip('#')
     r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
@@ -62,50 +60,62 @@ def obtener_fecha_actual():
     # dd/mm/YYYY
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     
-def imprimir_codigo_barras_simple(id_numero):
+def imprimir_codigo_epico(id_numero, tipo, color, id_filamento):
+    numero_formateado = f"{id_numero:010d}"
+    fecha = datetime.now().strftime("%d/%m/%Y")
+
+    contenido_barcode = f"{tipo}-{id_filamento}-{numero_formateado}"
+
     zpl = f"""
 ^XA
-^FO50,50^BY3
+^LH0,0
+^PW400
+
+^FO30,300
+^A0N,30,30
+^FDFecha: {fecha}^FS
+
+
+^FO60,60^BY0.5,2,150
 ^BCN,100,Y,N,N
-^FD{id_numero}^FS
+^FD{contenido_barcode}^FS
+
+^FO30,320
+^A0N,30,30
+^FD{contenido_barcode}^FS
+
 ^XZ
 """
-    ruta_temp = f"/tmp/codigo_barras_{id_numero}.prn"
+    ruta_temp = f"/tmp/etiqueta_epica_{numero_formateado}.prn"
     with open(ruta_temp, "w") as f:
         f.write(zpl)
-    os.system(f"lp -d Zebra {ruta_temp}")
 
+    os.system(f"lp -d Zebra {ruta_temp}")
 
 def imprimir_etiqueta(nombre_archivo):
     ruta_original = f"/home/gst3d/etiquetas/{nombre_archivo}.prn"
     ruta_temp     = f"/tmp/{nombre_archivo}_con_fecha.prn"
     fecha = obtener_fecha_actual()
 
-   
     with open(ruta_original, 'r') as f:
         zpl = f.read()
 
- 
     if "^XZ" in zpl:
         zpl_body, _ = zpl.rsplit("^XZ", 1)
     else:
         zpl_body = zpl
 
-  
     overlay = f"""
     ^FO60,205
     ^A0N,30,30
     ^FDFecha: {fecha}^FS
     """
-
     zpl_final = zpl_body + overlay + "\n^XZ"
-
-   
+ 
     with open(ruta_temp, 'w') as f:
         f.write(zpl_final)
 
     os.system(f"lp -d Zebra {ruta_temp}")
-
 
 import re
 
@@ -135,7 +145,6 @@ def actualizar_botones(tipo):
             .replace("GLITTER", "GLIT-")
             .replace("COLORCHANGE", "COLOR-CHANGE")
         )
-
         # Si es tipo PETG, le sacamos la "P" del principio si existe
         if tipo == "PETG" and etiqueta_mostrar.startswith("P"):
             etiqueta_mostrar = etiqueta_mostrar[1:]
@@ -156,10 +165,9 @@ def actualizar_botones(tipo):
                             e,
                             t,
                             e,
-                            "FIL1234"
+                            "FILAMENT"
                         )
                     )
-
         btn.grid(row=r, column=c, padx=5, pady=5, sticky="nsew")
 
     for i in range(cols):
@@ -174,7 +182,7 @@ def subir_etiqueta_supabase(tipo, color, id_filamento, id_numero):
         "tipo": tipo,
         "color": color,
         "id_filamento": id_filamento,
-        "id_numero": id_numero
+        "id_numero": f"{id_numero:08d}",
     }
     response = supabase.table("etiquetas_filamento").insert(data).execute()
     if response.status_code == 201:
@@ -202,15 +210,20 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     id_numero = leer_contador()
 
     imprimir_etiqueta(nombre_archivo)
-    imprimir_codigo_barras_simple(id_numero)
+    imprimir_codigo_epico(id_numero, tipo, color, id_filamento)
+        
+    numero_formateado = f"{id_numero:010d}"
+    contenido_barcode = f"{tipo}-{color}-{id_filamento}-{numero_formateado}"
 
     datos = {
         "fecha": datetime.now().isoformat(),
         "tipo": tipo,
         "color": color,
         "id_filamento": id_filamento,
-        "id_numero": id_numero
+        "id_numero": numero_formateado,
+        "codigo_barra": contenido_barcode
     }
+
 
     guardar_local(datos)
     guardar_contador(id_numero + 1)
@@ -219,9 +232,6 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
 
     if hay_conexion():
         threading.Thread(target=sincronizar_datos_locales, daemon=True).start()
-
-
-
 
 # Conexion wifi chequeo y actualizacion de datos
 def hay_conexion():
@@ -294,9 +304,7 @@ def sincronizar_datos_locales():
 
     except Exception as e:
         print(f"💣 Error general durante la sincronización: {e}")
-
-
-       
+      
 # INTERFAZ TK 
 root = tk.Tk()
 root.title("Impresion de etiquetas")
@@ -305,7 +313,6 @@ root.attributes('-fullscreen', True)
 root.overrideredirect(True)
 root.configure(bg="#2e2e2e")
     
-
 tipo_var = tk.StringVar(value="PLA")
 tk.OptionMenu(root, tipo_var, *colores_por_tipo.keys(), command=actualizar_botones).pack(pady=10)
 btn_sync = tk.Button(root, text="🔁 Sincronizar ahora", font=("Arial", 14),
