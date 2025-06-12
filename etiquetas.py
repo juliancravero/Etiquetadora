@@ -13,7 +13,7 @@ key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhy
 
 supabase: Client = create_client(url, key)
 
-
+ID_MAQUINA = "01"
 
 def es_color_oscuro(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -61,12 +61,34 @@ colores_por_tipo = {
 def obtener_fecha_actual():
     # dd/mm/YYYY
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    
+
+def enviar_log_a_google_form(datos):
+    url = "https://docs.google.com/forms/d/e/1FAIpQLSeJOIF9dChWZSWWlH5YK9YXT504_yIwaXDELyr7EFOBNDNRjA/formResponse"
+
+    payload = {
+        "entry.1411632158": datos["fecha"],
+        "entry.1636210408": datos["tipo"],
+        "entry.1036328496": datos["color"],
+        "entry.2004314848": datos["id_filamento"],
+        "entry.474366348":  datos["id_numero"],
+        "entry.986741256":  datos["codigo_barra"],
+        "entry.1876513930": datos["id_maquina"]
+    }
+
+    try:
+        response = requests.post(url, data=payload)
+        if response.status_code == 200:
+            print("✅ Log enviado a Google Form con éxito.")
+        else:
+            print(f"⚠️ Respuesta inesperada: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Error al enviar a Google Form: {e}")
+
 def imprimir_codigo_epico(id_numero, tipo, color, id_filamento):
     numero_formateado = f"{id_numero:010d}"
     fecha = datetime.now().strftime("%d/%m/%Y")
 
-    contenido_barcode = f"{tipo}-{id_filamento}-{numero_formateado}"
+    contenido_barcode = f"{ID_MAQUINA}-{tipo}-{id_filamento}-{numero_formateado}"
 
     zpl = f"""
 ^XA
@@ -92,7 +114,6 @@ def imprimir_codigo_epico(id_numero, tipo, color, id_filamento):
 
 ^XZ
 """
-
     ruta_temp = f"/tmp/etiqueta_epica_{numero_formateado}.prn"
     with open(ruta_temp, "w") as f:
         f.write(zpl)
@@ -128,7 +149,6 @@ def imprimir_etiqueta(nombre_archivo):
         f.write(zpl_final)
 
     os.system(f"lp -d Zebra {ruta_temp}")
-
 
 import re
 
@@ -228,7 +248,7 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     imprimir_codigo_epico(id_numero, tipo, color, id_filamento)
         
     numero_formateado = f"{id_numero:010d}"
-    contenido_barcode = f"{tipo}-{id_filamento}-{numero_formateado}"
+    contenido_barcode = f"{ID_MAQUINA}-{tipo}-{id_filamento}-{numero_formateado}"
 
     datos = {
         "fecha": datetime.now().isoformat(),
@@ -237,6 +257,7 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
         "id_filamento": id_filamento,
         "id_numero": numero_formateado,
         "codigo_barra": contenido_barcode
+        "id_maquina": ID_MAQUINA
     }
 
 
@@ -246,6 +267,7 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     print(f"Etiqueta #{id_numero} impresa y guardada localmente")
 
     if hay_conexion():
+        enviar_log_a_google_form(datos)
         threading.Thread(target=sincronizar_datos_locales, daemon=True).start()
 
 
@@ -301,6 +323,7 @@ def sincronizar_datos_locales():
                     if hasattr(response, 'status_code') and response.status_code == 201:
                         print(f"✅ Línea {idx + 1} subida correctamente.")
                         exitos += 1
+                        enviar_log_a_google_form(datos)
                     else:
                         print(f"❌ Línea {idx + 1} falló: {getattr(response, 'data', 'Sin detalles')}")
                         errores += 1
@@ -322,9 +345,7 @@ def sincronizar_datos_locales():
 
     except Exception as e:
         print(f"💣 Error general durante la sincronización: {e}")
-
-
-       
+      
 # INTERFAZ TK 
 root = tk.Tk()
 root.title("Impresion de etiquetas")
@@ -333,7 +354,6 @@ root.attributes('-fullscreen', True)
 root.overrideredirect(True)
 root.configure(bg="#2e2e2e")
     
-
 tipo_var = tk.StringVar(value="PLA")
 tk.OptionMenu(root, tipo_var, *colores_por_tipo.keys(), command=actualizar_botones).pack(pady=10)
 btn_sync = tk.Button(root, text="🔁 Sincronizar ahora", font=("Arial", 14),
