@@ -334,6 +334,12 @@ def sincronizar_datos_locales():
                 except Exception as e:
                     print(f"💣 Error inesperado al subir línea {idx + 1}: {e}")
                     errores += 1
+        if exitos > 0:
+            mensaje = f"📦 Raspberry {ID_MAQUINA}:\n✅ {exitos} etiquetas sincronizadas.\n"
+        if errores > 0:
+            mensaje += f"❌ {errores} con errores.\n"
+        mensaje += "📡 Fin de sincronización."
+        enviar_telegram(mensaje)
 
         if errores == 0 and exitos > 0:
             os.remove("datos_locales.json")
@@ -349,7 +355,7 @@ def sincronizar_datos_locales():
 #Telegram
 def enviar_telegram(mensaje):
     bot_token = "7974540435:AAEcjxJTplsM--ZgKKXZpsG7ZCg_oWCmqeo"
-    chat_id = "1996156133"
+    chat_id = "-4919139591"
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
