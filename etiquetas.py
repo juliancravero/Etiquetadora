@@ -351,7 +351,6 @@ def sincronizar_datos_locales():
 
     except Exception as e:
         print(f"💣 Error general durante la sincronización: {e}")
-
 #Telegram
 def enviar_telegram(mensaje):
     bot_token = "7974540435:AAEcjxJTplsM--ZgKKXZpsG7ZCg_oWCmqeo"
@@ -366,9 +365,7 @@ def enviar_telegram(mensaje):
     try:
         requests.post(url, data=payload)
     except Exception as e:
-        print(f"❌ Error al enviar mensaje Telegram: {e}")
-
-      
+        print(f"❌ Error al enviar mensaje Telegram: {e}")   
 # INTERFAZ TK 
 root = tk.Tk()
 root.title("Impresion de etiquetas")
@@ -383,8 +380,8 @@ btn_sync = tk.Button(root, text="🔁 Sincronizar ahora", font=("Arial", 14),
                      bg="#444", fg="white", activebackground="#666",
                      command=lambda: threading.Thread(target=sincronizar_datos_locales, daemon=True).start())
 btn_sync.pack(pady=5)
-
 canvas = tk.Canvas(root)
+
 from tkinter import ttk
 sb = tk.Scrollbar(root, orient="vertical", command=canvas.yview, width=20)
 style = ttk.Style()
@@ -394,14 +391,13 @@ style.configure("Vertical.TScrollbar", gripcount=0,
                 troughcolor="black", bordercolor="black", arrowcolor="white",
                 width=30)
 frame_botones = tk.Frame(canvas)
-
 frame_botones.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 canvas.create_window((0,0), window=frame_botones, anchor="nw")
 canvas.configure(yscrollcommand=sb.set)
-
 canvas.pack(side="left",  fill="both", expand=True)
 sb.pack(       side="right", fill="y"      )
 
 actualizar_botones("PLA")
+
 import threading
 root.mainloop() 
