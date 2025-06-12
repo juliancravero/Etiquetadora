@@ -345,6 +345,23 @@ def sincronizar_datos_locales():
 
     except Exception as e:
         print(f"💣 Error general durante la sincronización: {e}")
+
+#Telegram
+def enviar_telegram(mensaje):
+    bot_token = "7974540435:AAEcjxJTplsM--ZgKKXZpsG7ZCg_oWCmqeo"
+    chat_id = "1996156133"
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": mensaje
+    }
+
+    try:
+        requests.post(url, data=payload)
+    except Exception as e:
+        print(f"❌ Error al enviar mensaje Telegram: {e}")
+
       
 # INTERFAZ TK 
 root = tk.Tk()
