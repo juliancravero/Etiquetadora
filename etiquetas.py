@@ -13,7 +13,6 @@ key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhy
 
 supabase: Client = create_client(url, key)
 
-ID_MAQUINA = "01"
 
 def es_color_oscuro(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -241,6 +240,8 @@ def guardar_contador(numero):
     with open(ARCHIVO_CONTADOR, "w") as f:
         f.write(str(numero))
 
+ID_MAQUINA = "01"
+
 def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     id_numero = leer_contador()
 
@@ -256,7 +257,7 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
         "color": color,
         "id_filamento": id_filamento,
         "id_numero": numero_formateado,
-        "codigo_barra": contenido_barcode
+        "codigo_barra": contenido_barcode,
         "id_maquina": ID_MAQUINA
     }
 
