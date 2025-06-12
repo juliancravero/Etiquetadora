@@ -13,6 +13,8 @@ key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhy
 
 supabase: Client = create_client(url, key)
 
+
+
 def es_color_oscuro(hex_color):
     hex_color = hex_color.lstrip('#')
     r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
@@ -38,7 +40,7 @@ colores_por_tipo = {
         "SGREEN": "#228B22", "SPEACH": "#FFDAB9", "SPURPLE": "#800080", "SRED": "#FF0000",
         "SROSEGOLD": "#B76E79", "SSAND": "#C2B280", "SORANGEFLUOR" : "#FF8000", "SGREENFLUOR" : "#556B2F", "SYELLOWFLUOR" : "#FFFF00", "STRICOLORGREENPURPLEBLUE" : "#AEC6CF",
         "STRICOLORREDGOLDBLUE" : "#FFDB58", "STRICOLORGOLDPURPLEBLUE": "#FFD700",
-        "STRICOLORREDORANGEGOLD": "#FF6347", "SCOLORCHANGE": "#A68F6A", "STRICOLORGREENPURPLEGOLD": "#0000FF", "SILKCOBRE": "#FF0000", "TRICOLORBLUEYELLOWFGREEN": "#4B4B4B", "TRICOLORGREENGOLDFUCHSIA": "AEC6CF" 
+        "STRICOLORREDORANGEGOLD": "#FF6347", "SCOLORCHANGE": "#A68F6A", "STRICOLORGREENPURPLEGOLD": "#0000FF","TRICOLORBLUEYELLOWFGREEN": "#4B4B4B", "TRICOLORGREENGOLDFUCHSIA": "#AEC6CF" 
     },
     "PETG": {
         "PAPPLEGREEN": "#8DB600", "PBLACK": "#000000", "PCRYSTAL": "#CCE5FF", "PRED": "#FF0000",
@@ -71,6 +73,10 @@ def imprimir_codigo_epico(id_numero, tipo, color, id_filamento):
 ^LH0,0
 ^PW400
 
+^FO20,200
+^A0N,20,20
+^FD      Codigo del producto: "{id_numero:010d}"^FS
+
 ^FO30,300
 ^A0N,30,30
 ^FDFecha: {fecha}^FS
@@ -86,6 +92,7 @@ def imprimir_codigo_epico(id_numero, tipo, color, id_filamento):
 
 ^XZ
 """
+
     ruta_temp = f"/tmp/etiqueta_epica_{numero_formateado}.prn"
     with open(ruta_temp, "w") as f:
         f.write(zpl)
@@ -97,25 +104,31 @@ def imprimir_etiqueta(nombre_archivo):
     ruta_temp     = f"/tmp/{nombre_archivo}_con_fecha.prn"
     fecha = obtener_fecha_actual()
 
+   
     with open(ruta_original, 'r') as f:
         zpl = f.read()
 
+ 
     if "^XZ" in zpl:
         zpl_body, _ = zpl.rsplit("^XZ", 1)
     else:
         zpl_body = zpl
 
+  
     overlay = f"""
     ^FO60,205
     ^A0N,30,30
     ^FDFecha: {fecha}^FS
     """
+
     zpl_final = zpl_body + overlay + "\n^XZ"
- 
+
+   
     with open(ruta_temp, 'w') as f:
         f.write(zpl_final)
 
     os.system(f"lp -d Zebra {ruta_temp}")
+
 
 import re
 
@@ -145,6 +158,7 @@ def actualizar_botones(tipo):
             .replace("GLITTER", "GLIT-")
             .replace("COLORCHANGE", "COLOR-CHANGE")
         )
+
         # Si es tipo PETG, le sacamos la "P" del principio si existe
         if tipo == "PETG" and etiqueta_mostrar.startswith("P"):
             etiqueta_mostrar = etiqueta_mostrar[1:]
@@ -168,6 +182,7 @@ def actualizar_botones(tipo):
                             "FILAMENT"
                         )
                     )
+
         btn.grid(row=r, column=c, padx=5, pady=5, sticky="nsew")
 
     for i in range(cols):
@@ -213,7 +228,7 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     imprimir_codigo_epico(id_numero, tipo, color, id_filamento)
         
     numero_formateado = f"{id_numero:010d}"
-    contenido_barcode = f"{tipo}-{color}-{id_filamento}-{numero_formateado}"
+    contenido_barcode = f"{tipo}-{id_filamento}-{numero_formateado}"
 
     datos = {
         "fecha": datetime.now().isoformat(),
@@ -232,6 +247,9 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
 
     if hay_conexion():
         threading.Thread(target=sincronizar_datos_locales, daemon=True).start()
+
+
+
 
 # Conexion wifi chequeo y actualizacion de datos
 def hay_conexion():
@@ -304,7 +322,9 @@ def sincronizar_datos_locales():
 
     except Exception as e:
         print(f"💣 Error general durante la sincronización: {e}")
-      
+
+
+       
 # INTERFAZ TK 
 root = tk.Tk()
 root.title("Impresion de etiquetas")
@@ -313,6 +333,7 @@ root.attributes('-fullscreen', True)
 root.overrideredirect(True)
 root.configure(bg="#2e2e2e")
     
+
 tipo_var = tk.StringVar(value="PLA")
 tk.OptionMenu(root, tipo_var, *colores_por_tipo.keys(), command=actualizar_botones).pack(pady=10)
 btn_sync = tk.Button(root, text="🔁 Sincronizar ahora", font=("Arial", 14),
