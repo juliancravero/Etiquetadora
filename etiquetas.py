@@ -39,7 +39,7 @@ colores_por_tipo = {
         "SGREEN": "#228B22", "SPEACH": "#FFDAB9", "SPURPLE": "#800080", "SRED": "#FF0000",
         "SROSEGOLD": "#B76E79", "SSAND": "#C2B280", "SORANGEFLUOR" : "#FF8000", "SGREENFLUOR" : "#556B2F", "SYELLOWFLUOR" : "#FFFF00", "STRICOLORGREENPURPLEBLUE" : "#AEC6CF",
         "STRICOLORREDGOLDBLUE" : "#FFDB58", "STRICOLORGOLDPURPLEBLUE": "#FFD700",
-        "STRICOLORREDORANGEGOLD": "#FF6347", "SCOLORCHANGE": "#A68F6A", "STRICOLORGREENPURPLEGOLD": "#0000FF","TRICOLORBLUEYELLOWFGREEN": "#4B4B4B", "TRICOLORGREENGOLDFUCHSIA": "#AEC6CF" 
+        "STRICOLORREDORANGEGOLD": "#FF6347", "SCOLORCHANGE": "#A68F6A", "STRICOLORGREENPURPLEGOLD": "#0000FF","STRICOLORBLUEYELLOWFGREEN": "#4B4B4B", "STRICOLORGREENGOLDFUCHSIA": "#AEC6CF" , "STRICOLOEGREENREDBLUE": "#AEC6CF"
     },
     "PETG": {
         "PAPPLEGREEN": "#8DB600", "PBLACK": "#000000", "PCRYSTAL": "#CCE5FF", "PRED": "#FF0000",
@@ -61,27 +61,17 @@ def obtener_fecha_actual():
     # dd/mm/YYYY
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-def enviar_log_a_google_form(datos):
-    url = "https://docs.google.com/forms/d/e/1FAIpQLSeJOIF9dChWZSWWlH5YK9YXT504_yIwaXDELyr7EFOBNDNRjA/formResponse"
 
-    payload = {
-        "entry.1411632158": datos["fecha"],
-        "entry.1636210408": datos["tipo"],
-        "entry.1036328496": datos["color"],
-        "entry.2004314848": datos["id_filamento"],
-        "entry.474366348":  datos["id_numero"],
-        "entry.986741256":  datos["codigo_barra"],
-        "entry.1876513930": datos["id_maquina"]
-    }
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwCSP9yu69H8NI09-vL8PiueG5_u72nJD2cCcUZBOUN0b2QnRZKlcwnJsrboPiHwgnt/exec"
 
+def guardar_en_google_sheets(datos):
     try:
-        response = requests.post(url, data=payload)
-        if response.status_code == 200:
-            print("✅ Log enviado a Google Form con éxito.")
-        else:
-            print(f"⚠️ Respuesta inesperada: {response.status_code}")
+        # Manda JSON directo al Web App
+        resp = requests.post(WEBAPP_URL, json=datos, timeout=5)
+        print(f"📄 Sheets webhook status: {resp.status_code} / {resp.text}")
     except Exception as e:
-        print(f"❌ Error al enviar a Google Form: {e}")
+        print(f"❌ Error al enviar a Sheets via Apps Script: {e}")
+
 
 def imprimir_codigo_epico(id_numero, tipo, color, id_filamento):
     numero_formateado = f"{id_numero:010d}"
@@ -90,29 +80,29 @@ def imprimir_codigo_epico(id_numero, tipo, color, id_filamento):
     contenido_barcode = f"{ID_MAQUINA}-{tipo}-{id_filamento}-{numero_formateado}"
 
     zpl = f"""
-^XA
-^LH0,0
-^PW400
+    ^XA
+    ^LH0,0
+    ^PW400
 
-^FO20,200
-^A0N,20,20
-^FD      Codigo del producto: "{id_numero:010d}"^FS
+    ^FO20,200
+    ^A0N,20,20
+    ^FD      Codigo del producto: "{id_numero:010d}"^FS
 
-^FO30,300
-^A0N,30,30
-^FDFecha: {fecha}^FS
+    ^FO30,300
+    ^A0N,30,30
+    ^FDFecha: {fecha}^FS
 
 
-^FO60,60^BY0.5,2,150
-^BCN,100,Y,N,N
-^FD{contenido_barcode}^FS
+    ^FO60,60^BY0.5,2,150
+    ^BCN,100,Y,N,N
+    ^FD{contenido_barcode}^FS
 
-^FO30,320
-^A0N,30,30
-^FD{contenido_barcode}^FS
+    ^FO30,320
+    ^A0N,30,30
+    ^FD{contenido_barcode}^FS
 
-^XZ
-"""
+    ^XZ
+    """
     ruta_temp = f"/tmp/etiqueta_epica_{numero_formateado}.prn"
     with open(ruta_temp, "w") as f:
         f.write(zpl)
@@ -252,14 +242,15 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     contenido_barcode = f"{ID_MAQUINA}-{tipo}-{id_filamento}-{numero_formateado}"
 
     datos = {
-        "fecha": datetime.now().isoformat(),
-        "tipo": tipo,
-        "color": color,
-        "id_filamento": id_filamento,
-        "id_numero": numero_formateado,
-        "codigo_barra": contenido_barcode,
-        "id_maquina": ID_MAQUINA
+        "fecha": str(datetime.now().isoformat()),
+        "tipo": str(tipo),
+        "color": str(color),
+        "id_filamento": str(id_filamento),
+        "id_numero": str(numero_formateado),
+        "codigo_barra": str(contenido_barcode),
+        "id_maquina": str(ID_MAQUINA)
     }
+
 
 
     guardar_local(datos)
@@ -268,7 +259,7 @@ def imprimir_y_guardar_etiqueta(nombre_archivo, tipo, color, id_filamento):
     print(f"Etiqueta #{id_numero} impresa y guardada localmente")
 
     if hay_conexion():
-        enviar_log_a_google_form(datos)
+       # guardar_en_google_sheets(datos)
         threading.Thread(target=sincronizar_datos_locales, daemon=True).start()
 
 
@@ -310,6 +301,7 @@ def sincronizar_datos_locales():
 
             exitos = 0
             errores = 0
+            detalles_exitos = []
 
             for idx, linea in enumerate(lineas):
                 print(f"📄 Línea {idx + 1} cruda: {linea.strip()}")
@@ -321,10 +313,11 @@ def sincronizar_datos_locales():
                     response = supabase.table('etiquetas_filamento').insert(datos).execute()
                     print("🧾 Respuesta de Supabase:", response)
 
-                    if hasattr(response, 'status_code') and response.status_code == 201:
+                    if response.data:
                         print(f"✅ Línea {idx + 1} subida correctamente.")
                         exitos += 1
-                        enviar_log_a_google_form(datos)
+                        guardar_en_google_sheets(datos)
+                        detalles_exitos.append(f"✅ {datos['tipo']} - {datos['color']} - {datos['codigo_barra']}")
                     else:
                         print(f"❌ Línea {idx + 1} falló: {getattr(response, 'data', 'Sin detalles')}")
                         errores += 1
@@ -335,13 +328,25 @@ def sincronizar_datos_locales():
                 except Exception as e:
                     print(f"💣 Error inesperado al subir línea {idx + 1}: {e}")
                     errores += 1
+
+        # 📬 Armar y enviar mensaje por Telegram
+        mensaje = f"📦 Raspberry {ID_MAQUINA}:\n"
+
         if exitos > 0:
-            mensaje = f"📦 Raspberry {ID_MAQUINA}:\n✅ {exitos} etiquetas sincronizadas.\n"
+            mensaje += f"✅ {exitos} etiquetas sincronizadas:\n"
+            mensaje += "\n".join(detalles_exitos)
+
         if errores > 0:
-            mensaje += f"❌ {errores} con errores.\n"
-        mensaje += "📡 Fin de sincronización."
+            mensaje += f"\n❌ {errores} fallidas."
+
+        if exitos == 0 and errores == 0:
+            mensaje += "🤷 Nada que sincronizar."
+
+        mensaje += "\n📡 Fin de sincronización."
+        print("🧪 Enviando mensaje a Telegram:\n", mensaje)
         enviar_telegram(mensaje)
 
+        # 🗑️ Limpieza si todo fue OK
         if errores == 0 and exitos > 0:
             os.remove("datos_locales.json")
             print("🗑️ Todos los datos subidos. Archivo local eliminado.")
@@ -352,21 +357,27 @@ def sincronizar_datos_locales():
 
     except Exception as e:
         print(f"💣 Error general durante la sincronización: {e}")
+
+
 #Telegram
 def enviar_telegram(mensaje):
     bot_token = "7974540435:AAEcjxJTplsM--ZgKKXZpsG7ZCg_oWCmqeo"
     chat_id = "-4919139591"
-
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+
     payload = {
         "chat_id": chat_id,
-        "text": mensaje
+        "text": mensaje[:4000]  # Cortamos para no pasarnos del límite
     }
 
     try:
-        requests.post(url, data=payload)
+        response = requests.post(url, data=payload)
+        print("📨 Telegram status:", response.status_code)
+        print("📨 Telegram response:", response.text)
     except Exception as e:
-        print(f"❌ Error al enviar mensaje Telegram: {e}")   
+        print(f"❌ Error al enviar mensaje Telegram: {e}")
+  
+
 # INTERFAZ TK 
 root = tk.Tk()
 root.title("Impresion de etiquetas")
